@@ -1,41 +1,98 @@
-# Compiled Lua sources
-luac.out
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
-# luarocks build files
-*.src.rock
-*.zip
-*.tar.gz
+getgenv().refusal = {
+    Key = Enum.KeyCode.B,
+    Enabled = false,
+}
 
-# Object files
-*.o
-*.os
-*.ko
-*.obj
-*.elf
+local chatFocused = false
 
-# Precompiled Headers
-*.gch
-*.pch
+UserInputService.TextBoxFocused:Connect(function()
+    chatFocused = true
+end)
 
-# Libraries
-*.lib
-*.a
-*.la
-*.lo
-*.def
-*.exp
+UserInputService.TextBoxFocusReleased:Connect(function()
+    chatFocused = false
+end)
 
-# Shared objects (inc. Windows DLLs)
-*.dll
-*.so
-*.so.*
-*.dylib
+UserInputService.InputEnded:Connect(function(input, gameProcessed)
+    if not gameProcessed and not chatFocused and input.KeyCode == getgenv().refusal.Key then
+        getgenv().refusal.Enabled = not getgenv().refusal.Enabled
 
-# Executables
-*.exe
-*.out
-*.app
-*.i*86
-*.x86_64
-*.hex
+        local notificationText = getgenv().refusal.Enabled and "on" or "off"
+        game.StarterGui:SetCore("SendNotification", {
+            Title = "SplithwareAnti",
+            Text = notificationText,
+            Duration = 3,
+        })
+    end
+end)
 
+RunService.Heartbeat:Connect(function()
+    if getgenv().refusal.Enabled then
+        local humanoidRootPart = game.Players.LocalPlayer.Character.HumanoidRootPart
+        local originalVelocity = humanoidRootPart.Velocity
+
+        humanoidRootPart.CFrame = humanoidRootPart.CFrame * CFrame.Angles(0, math.rad(0.01), 0)
+
+        local randomVelocity = Vector3.new(
+            math.random(-3000, 3000),
+            math.random(-3000, 3000),
+            math.random(-3000, 3000)
+        )
+
+        humanoidRootPart.Velocity = randomVelocity
+        RunService.RenderStepped:Wait()
+        humanoidRootPart.Velocity = originalVelocity
+    end
+end)
+
+
+
+
+-- Define the whitelist of player IDs who have premium access
+local premiumWhitelist = {
+    3965660193, -- Replace with actual player ID
+    87654321, -- Add more player IDs as needed
+    -- Add more player IDs
+}
+
+-- Function to check if a player is in the whitelist
+local function isPlayerPremium(player)
+    for _, playerId in ipairs(premiumWhitelist) do
+        if player.UserId == playerId then
+            return true
+        end
+    end
+    return false
+end
+
+-- Listen for player chats
+game.Players.PlayerAdded:Connect(function(player)
+    player.Chatted:Connect(function(message)
+        -- Check if the message starts with the command ":kick "
+        if string.sub(message, 1, 6) == ":kick " then
+            -- Extract the player name from the message
+            local targetName = string.sub(message, 7)
+            local targetPlayer = game.Players:FindFirstChild(targetName)
+
+            -- Check if the player issuing the command is on the whitelist
+            if isPlayerPremium(player) then
+                -- Check if the target player exists
+                if targetPlayer then
+                    -- Kick the target player if they aren't on the whitelist
+                    if not isPlayerPremium(targetPlayer) then
+                        targetPlayer:Kick("You have been kicked by a premium user.")
+                    else
+                        player:Kick("You cannot kick a premium player.")
+                    end
+                else
+                    player:Kick("Player not found.")
+                end
+            else
+                player:Kick("You do not have permission to kick players.")
+            end
+        end
+    end)
+end)
